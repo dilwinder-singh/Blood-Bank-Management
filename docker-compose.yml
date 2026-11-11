@@ -1,0 +1,53 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: blood-bank-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local_root_password}
+      MYSQL_DATABASE: blood_bank_management
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./backend/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    container_name: blood-bank-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local_root_password}
+      DB_NAME: blood_bank_management
+      JWT_SECRET: ${JWT_SECRET:-local-development-only-change-this-secret}
+      PORT: 5000
+      CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080
+      NODE_ENV: production
+      ADMIN_NAME: ${ADMIN_NAME:-System Administrator}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@bloodbank.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@12345}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: blood-bank-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql-data:
