@@ -14,6 +14,7 @@ export const pool = mysql.createPool({
   queueLimit: 0,
   dateStrings: true,
   charset: 'utf8mb4',
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 
 export async function testDatabase() {
